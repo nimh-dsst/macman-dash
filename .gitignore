@@ -149,6 +149,9 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+!.env.*.example
 .envrc
 .venv
 env/
@@ -210,9 +213,42 @@ tempCodeRunnerFile.py
 .pypirc
 
 # Marimo
+# Generated notebook sessions, caches, and editor assets (keep notebook .py files).
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local-only WASM staging, HTML exports, runtime/package/browser downloads,
+# copied research assets, screenshots, and test reports. Molab uses source files.
+/.local-wasm/
+/.local-atlas-audit/
+# Keep macman/, data/ runtime assets, tests/, pyproject.toml, and uv.lock included.
+# Do not globally ignore HTML, JavaScript, GIFTI, or WASM file extensions.
+
+# Codex local state: credentials, sessions, logs, caches, databases, and worktrees.
+# Allow deliberate shared project config; do not ignore AGENTS.md or .agents/skills/.
+/.codex/*
+!/.codex/config.toml
+!/.codex/hooks.json
+!/.codex/hooks/
+!/.codex/rules/
+!/.codex/agents/
+!/.codex/environments/
+!/.codex/skills/
+
+# Personal/scratch notes of any format; shared project documentation stays in Git.
+/notes/
+
+# Raw research CSVs stay local; commit catalog-referenced prepared runtime assets.
+/data/h2m/
+
+# Operating-system and editor temporary files
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*.swo
+*~
 
 # Streamlit
 .streamlit/secrets.toml
