@@ -1,0 +1,40 @@
+{
+  "lh": {
+    "source": "lh.gray_conv.csv",
+    "source_sha256": "1bb42357f8d0f9bdfafcf34afde2dc4e5e5f898c8a617c91f2e9f86acf05b34a",
+    "path": "lh.curvature.shape.gii",
+    "sha256": "6b53c4ad3605e908cec33298cc536147167adcb9a66befa8eca9e50eabfe7add",
+    "mapping": "raw convexity; native gray with per-hemisphere display limits",
+    "source_range": [
+      -1.022548,
+      1.251789
+    ],
+    "display_range": [
+      -2.350421776397516,
+      1.251789
+    ],
+    "brightness_range": [
+      0.3686274509803922,
+      1.0
+    ]
+  },
+  "rh": {
+    "source": "rh.gray_conv.csv",
+    "source_sha256": "77a6af63f9089786ca933054c7ba3e59a48119b8e651544bfa49cb8041cdba1c",
+    "path": "rh.curvature.shape.gii",
+    "sha256": "986b01e96639406558ae9502f512fdb7059d1772e75f8173522eeaae677589cb",
+    "mapping": "raw convexity; native gray with per-hemisphere display limits",
+    "source_range": [
+      -1.102439,
+      1.21785
+    ],
+    "display_range": [
+      -2.457141894409938,
+      1.21785
+    ],
+    "brightness_range": [
+      0.3686274509803922,
+      1.0
+    ]
+  }
+}
