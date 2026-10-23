@@ -16,11 +16,13 @@ app = marimo.App(width="full", app_title="MACMAN Dashboard")
 
 
 @app.cell
-def _():
+async def _():
     import json
+    import sys
 
     import marimo as mo
 
+    from macman.assets import INITIAL_ASSETS, ensure_assets
     from macman.colors import (
         DEFAULT_PALETTE_LABEL,
         PALETTES,
@@ -36,7 +38,14 @@ def _():
         replace_map,
     )
 
+    asset_base = (
+        str(mo.notebook_location() / "public") if sys.platform == "emscripten" else None
+    )
+    await ensure_assets(INITIAL_ASSETS, asset_base)
+
     return (
+        asset_base,
+        ensure_assets,
         DEFAULT_PALETTE_LABEL,
         DEFAULT_MAP_OPACITY,
         PALETTES,
@@ -269,13 +278,23 @@ def _(camera, nhp_camera_angles, reset, result_viewers):
 
 
 @app.cell
-def _(catalog, hemisphere, load_stat_assets, resolve_roi, roi):
+async def _(
+    asset_base, catalog, ensure_assets, hemisphere, load_stat_assets, resolve_roi, roi
+):
     selected_roi = resolve_roi(catalog["rois"], hemisphere.value, roi.value)
     selected_entry = catalog["rois"].get(selected_roi)
     map_error = None
     stat_assets = None
     if selected_entry:
         try:
+            await ensure_assets(
+                [
+                    info["path"]
+                    for variant in selected_entry["assets"].values()
+                    for info in variant.values()
+                ],
+                asset_base,
+            )
             stat_assets = load_stat_assets(selected_entry)
         except (ValueError, OSError) as exc:
             map_error = str(exc)

@@ -170,6 +170,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# Prepared data copies for marimo WASM export (sources remain under data/).
+/public/
+
 # mypy
 .mypy_cache/
 .dmypy.json

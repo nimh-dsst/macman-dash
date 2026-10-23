@@ -1,4 +1,4 @@
-"""Prepare an isolated WASM test copy. Does not export, upload, or modify the app.
+"""Stage the unchanged dashboard for the optional offline-only WASM test.
 
 Run: .venv/bin/python tests/prepare_local_wasm.py
 Then export the generated notebook with marimo html-wasm --offline --no-execute.
@@ -9,6 +9,8 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -22,32 +24,6 @@ def notebook_metadata(source):
     if match is None:
         raise ValueError("Run scripts/sync_notebook_dependencies.py first")
     return match.group()
-
-
-BOOTSTRAP = """    import asyncio as _asyncio
-    import sys as _sys
-    from urllib.parse import urlparse as _urlparse
-    from pyodide.http import pyfetch as _pyfetch
-
-    assert _sys.platform == "emscripten", "This copy must run in browser Python"
-    _asset_base = str(mo.notebook_location() / "public")
-    assert _urlparse(_asset_base).hostname in ("127.0.0.1", "localhost"), "Local test only"
-
-    async def ensure_local_assets(paths):
-        async def fetch_one(relative):
-            destination = ROOT / relative
-            if destination.exists():
-                return
-            response = await _pyfetch(_asset_base + "/" + relative)
-            if not response.ok:
-                raise OSError(f"Local asset unavailable: {relative} ({response.status})")
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(await response.bytes())
-        await _asyncio.gather(*(fetch_one(path) for path in paths))
-
-    await ensure_local_assets(INITIAL_ASSETS)
-    print("MACMAN_WASM_RUNTIME", _sys.platform, _sys.version)
-"""
 
 
 def main():
@@ -113,72 +89,26 @@ if __name__ == "__main__":
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns("__pycache__"),
     )
-    source = source.replace(
-        "def _():\n    import json", "async def _():\n    import json", 1
-    )
-    initial = ["data/catalog.json", "data/atlases/glasser_roi_names.tsv"]
-    initial += [
-        "data/surfaces/" + name
-        for name in (
-            "lh.gray_surface.inf_300.rsl.gii",
-            "rh.gray_surface.inf_300.rsl.gii",
-            "infl_left.gii.gz",
-            "infl_right.gii.gz",
-            "lh.HCP-MMP1.annot",
-            "rh.HCP-MMP1.annot",
-            "curvature.json",
-            "lh.curvature.shape.gii",
-            "rh.curvature.shape.gii",
-        )
-    ]
-    marker = """    from macman.viewer import (
-        DEFAULT_MAP_OPACITY,
-        create_viewers,
-        nhp_camera_angles,
-        replace_map,
-    )
-"""
-    assert source.count(marker) == 1
-    source = source.replace(
-        marker, marker + "\n" + BOOTSTRAP.replace("INITIAL_ASSETS", repr(initial))
-    )
-    source = source.replace(
-        "    return (\n        DEFAULT_PALETTE_LABEL,",
-        "    return (\n        ensure_local_assets,\n        DEFAULT_PALETTE_LABEL,",
-        1,
-    )
-    old = "def _(catalog, hemisphere, load_stat_assets, resolve_roi, roi):"
-    assert source.count(old) == 1
-    source = source.replace(
-        old,
-        "async def _(catalog, hemisphere, load_stat_assets, resolve_roi, roi, ensure_local_assets):",
-    )
-    source = source.replace(
-        "            stat_assets = load_stat_assets(selected_entry)",
-        """            await ensure_local_assets([
-                info["path"] for variant in selected_entry["assets"].values()
-                for info in variant.values()
-            ])
-            stat_assets = load_stat_assets(selected_entry)""",
-    )
     (STAGE / "dashboard.py").write_text(source)
-    catalog = json.loads((ROOT / "data/catalog.json").read_text())
-    active = set(initial)
-    for entry in catalog["rois"].values():
-        for variant in entry["assets"].values():
-            active.update(info["path"] for info in variant.values())
-    for relative in sorted(active):
-        target = STAGE / "public" / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / relative, target)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.prepare_wasm_assets",
+            "--output",
+            str(STAGE / "public"),
+        ],
+        cwd=ROOT,
+        check=True,
+    )
     manifest = {
-        name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        for name in sorted(active)
+        str(path.relative_to(STAGE / "public")): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in sorted((STAGE / "public").rglob("*"))
+        if path.is_file()
     }
     (STAGE / "input-checksums.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(
-        f"Staged {len(active)} local input files, including {len(catalog['rois']) * 4:,} active GIFTIs; no CSVs or obsolete maps."
-    )
     print(STAGE / "dashboard.py")
 
 

@@ -37,6 +37,22 @@ uv run marimo edit dashboard.py
 - **Reset selection** clears statistical maps and human highlighting while
   preserving cameras and display settings.
 
+## Export for static hosting
+
+From the repository root:
+
+```bash
+uv run python -m scripts.prepare_wasm_assets
+uv run marimo export html-wasm dashboard.py -o site --mode run
+python -m http.server --bind 127.0.0.1 --directory site
+```
+
+Open <http://127.0.0.1:8000/>. The preparation step copies only required runtime
+assets into `public/`; marimo packages the app and local Python modules into
+`site/`. Both generated directories are Git-ignored. The browser downloads shared
+assets at startup and statistical maps when selected, reusing files within the
+session. Internet access is needed for runtime/package downloads.
+
 ## Development
 
 ```bash
