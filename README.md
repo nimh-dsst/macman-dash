@@ -33,6 +33,7 @@ uv run marimo edit dashboard.py
   color represents the same value across ROI selections.
 - Rotate and zoom each figure independently. Use **Medial** under NHP views
   to see both inner surfaces. Camera reset restores the chosen preset and zoom.
+- Surfaces retain their source coordinates; the viewer handles framing.
 - **Reset selection** clears statistical maps and human highlighting while
   preserving cameras and display settings.
 

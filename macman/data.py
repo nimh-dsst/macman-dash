@@ -310,16 +310,11 @@ def colored_mesh_bytes(points, faces, colors):
 
 
 def scene_assets(root=ROOT):
-    """Independent centered meshes retain each hemisphere's vertex order."""
+    """Use source coordinates; let the viewer frame each hemisphere."""
     folder = root / "data/surfaces"
-    nhp = {}
-    for side in ("lh", "rh"):
-        mesh = nib.load(folder / f"{side}.gray_surface.inf_300.rsl.gii")
-        p, f = mesh.agg_data()
-        if p.shape != (VERTICES, 3):
-            raise ValueError("NMT mesh does not have the expected vertex count")
-        p = p - (p.min(axis=0) + p.max(axis=0)) / 2
-        nhp[side] = surface_bytes(p, f)
+    nhp = {
+        side: folder / f"{side}.gray_surface.inf_300.rsl.gii" for side in ("lh", "rh")
+    }
     human = {}
     for side, word in (("lh", "left"), ("rh", "right")):
         p, f = nib.load(folder / f"infl_{word}.gii.gz").agg_data()
@@ -328,7 +323,6 @@ def scene_assets(root=ROOT):
         )
         if len(labels) != len(p):
             raise ValueError("Human atlas and surface vertex counts differ")
-        p = p - (p.min(axis=0) + p.max(axis=0)) / 2
         rgba = np.full((len(p), 4), 180, dtype=np.uint8)
         valid = labels >= 0
         rgba[valid, :3] = colors[labels[valid], :3]

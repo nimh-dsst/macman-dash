@@ -17,8 +17,13 @@ not a separately verified mean-curvature or sulcal-depth measure.
 
 ## Visualization changes
 
-- Meshes are centered independently by translation at runtime. Source geometry
-  files and vertex/face ordering remain unchanged.
+- Human and NHP meshes retain source coordinates and vertex/face ordering;
+  the viewer frames each hemisphere. NHP meshes load from the original GIFTI
+  paths through ipyniivue, without Python geometry decoding or re-encoding.
+  Human geometry is read by NiBabel and encoded as MZ3 with atlas colors,
+  preserving source coordinates. No translation, rotation, scaling, resampling,
+  or smoothing is applied by the dashboard. Scalar overlays attach by vertex
+  index. Source files are unchanged.
 - Human annotations are decoded into opaque MZ3 vertex colors. Selection adds
   an outline and fades other parcels; source annotations are not rewritten.
   Corresponding left/right parcel RGB values differ, but labels and indices align.

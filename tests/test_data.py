@@ -217,3 +217,27 @@ def test_saved_convexity_retains_raw_values_and_approved_native_limits():
             (np.array([source.min(), source.max()]) - low) / (high - low),
             [94 / 255, 1],
         )
+
+
+def test_scene_preserves_source_geometry_without_reencoding_nhp(monkeypatch):
+    from macman.data import ROOT, VERTICES, scene_assets
+
+    load = nib.load
+
+    def human_only(path):
+        assert "gray_surface" not in str(path), "Pass NHP files to the viewer directly"
+        return load(path)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Runtime must not encode replacement NHP GIFTIs")
+
+    monkeypatch.setattr("macman.data.nib.load", human_only)
+    monkeypatch.setattr("macman.data.surface_bytes", forbidden)
+    nhp_paths, human = scene_assets()
+    for side, word in (("lh", "left"), ("rh", "right")):
+        source = ROOT / f"data/surfaces/{side}.gray_surface.inf_300.rsl.gii"
+        assert nhp_paths[side] == source
+        assert load(source).agg_data()[0].shape == (VERTICES, 3)
+        points, faces = load(ROOT / f"data/surfaces/infl_{word}.gii.gz").agg_data()
+        np.testing.assert_array_equal(human[side]["points"], points)
+        np.testing.assert_array_equal(human[side]["faces"], faces)

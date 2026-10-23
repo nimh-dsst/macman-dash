@@ -22,7 +22,7 @@ def layer_bytes(data, name, **kwargs):
 
 
 def create_viewers():
-    nhp_data, human = scene_assets()
+    nhp_paths, human = scene_assets()
     curvature_data = load_curvature_assets()
     options = {
         "height": 320,
@@ -42,7 +42,7 @@ def create_viewers():
     result_meshes = {}
     for side, viewer in result_viewers.items():
         mesh = ResultMesh(
-            data=nhp_data[side],
+            path=nhp_paths[side],
             name=f"NMT_{side}.gii",
             rgba255=[195, 204, 216, 255],
             layers=[curvature_layer(curvature_data[side])],
