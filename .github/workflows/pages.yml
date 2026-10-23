@@ -24,7 +24,7 @@ jobs:
       pages: read
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v9
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           version: "0.7.19"
       - name: Install locked dependencies
