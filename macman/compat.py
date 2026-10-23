@@ -1,4 +1,4 @@
-"""Narrow frontend fixes for pinned ipyniivue 2.4.4 in marimo 0.25.1.
+"""Narrow frontend fixes for pinned ipyniivue 2.4.4 in marimo.
 
 Nested anywidget models provide set/save_changes, not onChange. Also the
 upstream layer-list handler neither awaits parsing nor removes old layers.
