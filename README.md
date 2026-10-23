@@ -53,6 +53,15 @@ assets into `public/`; marimo packages the app and local Python modules into
 assets at startup and statistical maps when selected, reusing files within the
 session. Internet access is needed for runtime/package downloads.
 
+For GitHub Pages, select **Settings → Pages → Build and deployment → Source:
+GitHub Actions** in the repository. The [Pages workflow](.github/workflows/pages.yml)
+runs the reusable [CI workflow](.github/workflows/ci.yml), then prepares assets,
+exports the app, and deploys `site/` only if checks pass. It runs on pushes to
+`main` and can also be started from the Actions tab. CI runs independently on
+pull requests to `main`. Generated files are published
+as an artifact; they are not committed to a branch. The deployment job reports
+the resulting site URL.
+
 ## Development
 
 ```bash

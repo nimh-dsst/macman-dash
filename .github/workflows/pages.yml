@@ -1,0 +1,56 @@
+name: Deploy dashboard to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.7.19"
+      - name: Install locked dependencies
+        run: uv sync --locked --python 3.13
+      - name: Prepare runtime assets
+        run: uv run --frozen python -m scripts.prepare_wasm_assets
+      - name: Export dashboard
+        run: uv run --frozen marimo export html-wasm dashboard.py -o site --mode run
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

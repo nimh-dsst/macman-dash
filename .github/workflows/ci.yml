@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.7.19"
+      - name: Install locked dependencies
+        run: uv sync --locked --python 3.13
+      - name: Unit tests
+        run: uv run --frozen python -m pytest -q
+      - name: Ruff
+        run: uv run --frozen ruff check macman dashboard.py scripts tests
+      - name: Marimo validation
+        run: uv run --frozen marimo check dashboard.py
+      - name: Dependency metadata
+        run: uv run --frozen python scripts/sync_notebook_dependencies.py --check
