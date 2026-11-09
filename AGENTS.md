@@ -24,6 +24,22 @@ Treat current viewer bundle patches as prototype technical debt; consult
 `docs/compatibility.md` before extending them. Distinguish observed behavior
 in the pinned stack from confirmed package defects or universal limitations.
 
+## Marimo agent skills
+
+Use the relevant official [marimo skills](https://github.com/marimo-team/skills)
+for future marimo work. Read the applicable `SKILL.md` before implementing:
+
+- `marimo-notebook` for notebook structure, reactive controls, and app changes.
+- `wasm-compatibility` for browser compatibility checks and WASM deployment work.
+- `anywidget` (skill name `anywidget-generator`) when developing widget integration.
+- Use migration, batch-execution, or Molab-badge skills only for matching tasks.
+
+These skills are installed locally in the Codex skills directory, not vendored
+in this repository. If unavailable, report that and consult the upstream skills.
+Apply guidance against this project's pinned package versions; examples are not
+authorization to upgrade dependencies, replace supported APIs, or extend patches.
+Project data-preservation requirements and explicit user instructions still apply.
+
 ## Data preservation and implementation decisions
 
 - Preserve source geometry, vertex order, and scalar values by default. Before
