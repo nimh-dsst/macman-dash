@@ -4,6 +4,7 @@ import struct
 
 import nibabel as nib
 import numpy as np
+import pytest
 
 from macman.data import (
     ROOT,
@@ -74,9 +75,11 @@ def test_viewers_receive_source_geometry_during_creation_and_atlas_selection(
             viewer.close()
 
 
+@pytest.mark.parametrize("schema", ["legacy", "bh", "tfce"])
 def test_csv_values_reach_overlay_widgets_unchanged_across_display_updates(
     tmp_path,
     monkeypatch,
+    schema,
 ):
     # Different values per vertex/hemisphere detect sorting and hemisphere swaps.
     sources = (
@@ -86,7 +89,17 @@ def test_csv_values_reach_overlay_widgets_unchanged_across_display_updates(
     pairs = []
     for side, rows in zip(("lh", "rh"), sources):
         path = tmp_path / f"{side}.csv"
-        path.write_text(",mean_subj_acc,fdr_mask\n" + rows)
+        header = ",mean_subj_acc,fdr_mask"
+        if schema != "legacy":
+            header += ",bh_mask"
+            if schema == "tfce":
+                header += ",tfce_mask"
+            # Distinct masks expose accidental substitution for FDR at the viewer.
+            rows = "\n".join(
+                row + (",0,1" if schema == "tfce" else ",0")
+                for row in rows.splitlines()
+            ) + "\n"
+        path.write_text(header + "\n" + rows)
         pairs.append(read_map(path, count=3, with_mask=True))
     entry = {
         "assets": write_stat_assets(

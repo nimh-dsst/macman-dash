@@ -25,35 +25,75 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def read_map(path, count=VERTICES, with_mask=False):
-    with Path(path).open() as stream:
-        header = next(csv.reader(stream))
-    if header[:2] != ["", "mean_subj_acc"]:
-        raise ValueError(f"{Path(path).name}: expected index and mean_subj_acc columns")
-    if with_mask and header != ["", "mean_subj_acc", "fdr_mask"]:
-        raise ValueError(f"{Path(path).name}: expected binary fdr_mask column")
-    data = np.loadtxt(
-        path,
-        delimiter=",",
-        skiprows=1,
-        usecols=(0, 1, 2) if with_mask else (0, 1),
-        ndmin=2,
-        converters={1: lambda value: float(value) if value.strip() else float("nan")},
-    )
-    ids, values = data[:, 0], data[:, 1]
-    if len(ids) != count or not np.array_equal(np.sort(ids), np.arange(count)):
+def read_map_masks(path, count=VERTICES, *, require_bh=True):
+    """Read named masks and float32 statistics in ascending vertex-ID order.
+
+    Replacement data requires BH; ``require_bh=False`` also accepts the legacy
+    FDR-only schema. Optional TFCE is absent from the returned mask dictionary
+    when unavailable. All supplied columns are validated, regardless of use.
+    """
+    path = Path(path)
+    with path.open(newline="") as stream:
+        header = next(csv.reader(stream), [])
+    required = {"", "mean_subj_acc", "fdr_mask"}
+    if require_bh:
+        required.add("bh_mask")
+    allowed = required | {"bh_mask", "tfce_mask"}
+    if (
+        len(header) != len(set(header))
+        or not required.issubset(header)
+        or not set(header).issubset(allowed)
+        or ("tfce_mask" in header and "bh_mask" not in header)
+    ):
         raise ValueError(
-            f"{Path(path).name}: vertex IDs must cover 0..{count - 1} exactly once"
+            f"{path.name}: expected unique vertex-ID (unnamed), mean_subj_acc, "
+            "fdr_mask, and bh_mask columns (optional tfce_mask)"
+            + ("; legacy FDR-only schema also accepted" if not require_bh else "")
+        )
+    value_column = header.index("mean_subj_acc")
+    try:
+        data = np.loadtxt(
+            path,
+            delimiter=",",
+            skiprows=1,
+            comments=None,
+            ndmin=2,
+            converters={
+                value_column: lambda value: (
+                    float(value) if value.strip() else float("nan")
+                )
+            },
+        )
+    except ValueError as exc:
+        raise ValueError(f"{path.name}: invalid numeric CSV: {exc}") from exc
+    if data.shape != (count, len(header)):
+        raise ValueError(f"{path.name}: expected {count} rows and {len(header)} columns")
+    ids, values = data[:, header.index("")], data[:, value_column]
+    if not np.array_equal(np.sort(ids), np.arange(count)):
+        raise ValueError(
+            f"{path.name}: vertex IDs must cover 0..{count - 1} exactly once"
         )
     if np.isinf(values).any() or not np.isfinite(values).any():
-        raise ValueError(f"{Path(path).name}: infinite or entirely missing values")
+        raise ValueError(f"{path.name}: infinite or entirely missing values")
+    if np.any(np.abs(values[np.isfinite(values)]) > np.finfo(np.float32).max):
+        raise ValueError(f"{path.name}: statistic outside float32 range")
     order = np.argsort(ids)
-    values = values[order].astype(np.float32)
-    if with_mask:
-        mask = data[:, 2]
+    masks = {}
+    for name in ("fdr_mask", "bh_mask", "tfce_mask"):
+        if name not in header:
+            continue
+        mask = data[:, header.index(name)]
         if not np.isin(mask, [0, 1]).all():
-            raise ValueError(f"{Path(path).name}: fdr_mask must contain only 0 or 1")
-        return values, mask[order].astype(bool)
+            raise ValueError(f"{path.name}: {name} must contain only 0 or 1")
+        masks[name] = mask[order].astype(bool)
+    return values[order].astype(np.float32), masks
+
+
+def read_map(path, count=VERTICES, with_mask=False):
+    """Compatibility interface: return statistics and, optionally, supplied FDR."""
+    values, masks = read_map_masks(path, count, require_bh=False)
+    if with_mask:
+        return values, masks["fdr_mask"]
     return values
 
 

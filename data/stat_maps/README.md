@@ -33,3 +33,34 @@ Surface meshes and the two shared convexity GIFTIs are stored separately in
 [surface provenance](../surfaces/PROVENANCE.md) for these assets and
 [implementation details](../../docs/implementation.md) for opacity, outlines,
 color scales, and convexity rendering.
+
+## Source CSV reader
+
+`macman.data.read_map_masks(path)` validates replacement CSVs and returns
+`(values, masks)`, where `masks` is a dictionary keyed by source column name.
+Required columns are the unnamed vertex-ID column, `mean_subj_acc`, `fdr_mask`,
+and `bh_mask`; `tfce_mask` is optional. Column order may vary. An absent TFCE
+column produces no dictionary entry, so unavailable results remain distinct
+from an available mask with no passing vertices. TFCE without BH is rejected.
+
+`read_map_masks(..., require_bh=False)` additionally accepts the legacy schema
+with just IDs, statistics, and FDR. The existing `read_map` interface uses this
+compatibility mode: it returns statistics, or `(values, fdr_mask)` when
+`with_mask=True`. Catalog preparation still generates only the unthresholded
+and FDR variants described above. Reading BH/TFCE does not generate their assets
+or expose new dashboard controls.
+
+All supplied masks must contain only 0 or 1, even when the caller requests only
+statistics. Duplicate/unknown/missing columns, wrong row widths/counts, invalid
+vertex IDs, nonnumeric data, infinite/all-missing statistics, and statistics
+outside float32 range are rejected. Blank statistic fields remain NaN.
+
+The reader retains the established transformation: sort rows by explicit vertex
+ID, convert statistics to float32 for the viewer, and represent binary masks as
+Boolean arrays in the same order. Mask membership is preserved independently of
+statistic missingness; no mask is applied during reading. There is no
+normalization, threshold recomputation, or geometry change. Applying FDR during
+asset preparation continues to replace failing statistics with NaN. Synthetic
+regression tests cover reordered columns/rows, missing values, independent masks,
+invalid inputs, and unchanged serialized FDR/unthresholded viewer inputs across
+all three supported schemas.

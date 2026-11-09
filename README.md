@@ -81,6 +81,12 @@ uv run python scripts/sync_notebook_dependencies.py
 uv run python scripts/sync_notebook_dependencies.py --check
 ```
 
+Source CSV preparation accepts named FDR/BH mask columns and optional TFCE.
+`read_map_masks` requires BH by default for replacement-data validation; the
+existing `read_map` interface also accepts legacy FDR-only files. Prepared
+assets and dashboard controls still use FDR. See the
+[CSV reader contract](data/stat_maps/README.md#source-csv-reader) for details.
+
 ## Further documentation
 
 - [Compatibility notes](docs/compatibility.md): viewer adaptations, testing, and maintenance details.

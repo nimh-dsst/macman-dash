@@ -241,3 +241,73 @@ def test_scene_preserves_source_geometry_without_reencoding_nhp(monkeypatch):
         points, faces = load(ROOT / f"data/surfaces/infl_{word}.gii.gz").agg_data()
         np.testing.assert_array_equal(human[side]["points"], points)
         np.testing.assert_array_equal(human[side]["faces"], faces)
+
+
+@pytest.mark.parametrize("with_tfce", [False, True])
+def test_named_masks_preserve_values_and_alignment(tmp_path, with_tfce):
+    from macman.data import read_map_masks
+
+    # Both columns and vertex rows are shuffled; FDR and BH deliberately differ.
+    header = "bh_mask,mean_subj_acc,,fdr_mask"
+    rows = ["1,0.75,2,0", "0,,0,0", "1,0.125,1,1"]
+    if with_tfce:
+        header += ",tfce_mask"
+        rows = [row + suffix for row, suffix in zip(rows, (",1", ",0", ",0"))]
+    path = tmp_path / "map.csv"
+    path.write_text(header + "\n" + "\n".join(rows) + "\n")
+    values, masks = read_map_masks(path, 3)
+    assert values.dtype == np.float32
+    np.testing.assert_array_equal(values, [np.nan, 0.125, 0.75])
+    np.testing.assert_array_equal(masks["fdr_mask"], [False, True, False])
+    np.testing.assert_array_equal(masks["bh_mask"], [False, True, True])
+    assert all(mask.dtype == bool for mask in masks.values())
+    if with_tfce:
+        np.testing.assert_array_equal(masks["tfce_mask"], [False, False, True])
+    else:
+        assert "tfce_mask" not in masks
+    legacy_values, fdr = read_map(path, 3, with_mask=True)
+    np.testing.assert_array_equal(legacy_values, values)
+    np.testing.assert_array_equal(fdr, masks["fdr_mask"])
+
+
+def test_replacement_reader_requires_bh_legacy_interface_accepts_fdr(tmp_path):
+    from macman.data import read_map_masks
+
+    path = write_csv(tmp_path / "map.csv", ["0,0.5,1"])
+    with pytest.raises(ValueError, match="bh_mask"):
+        read_map_masks(path, 1)
+    values, masks = read_map_masks(path, 1, require_bh=False)
+    np.testing.assert_array_equal(values, [0.5])
+    assert set(masks) == {"fdr_mask"}
+    np.testing.assert_array_equal(read_map(path, 1), values)
+
+
+@pytest.mark.parametrize("column", ["fdr_mask", "bh_mask", "tfce_mask"])
+@pytest.mark.parametrize("bad", ["", "nan", "inf", "2", "-1", "0.5", "oops"])
+def test_all_supplied_masks_validated_even_when_not_requested(tmp_path, column, bad):
+    header = ["", "mean_subj_acc", "fdr_mask", "bh_mask", "tfce_mask"]
+    row = ["0", "0.5", "0", "1", "1"]
+    row[header.index(column)] = bad
+    path = tmp_path / "bad.csv"
+    path.write_text(",".join(header) + "\n" + ",".join(row) + "\n")
+    with pytest.raises(ValueError, match="bad.csv"):
+        read_map(path, 1)
+
+
+@pytest.mark.parametrize("content", [
+    "",
+    ",mean_subj_acc,bh_mask\n0,0.5,1\n",
+    ",mean_subj_acc,fdr_mask,bh_mask,bh_mask\n0,0.5,0,1,1\n",
+    ",mean_subj_acc,fdr_mask,bh_mask,other\n0,0.5,0,1,1\n",
+    ",mean_subj_acc,fdr_mask,tfce_mask\n0,0.5,0,1\n",
+    ",mean_subj_acc,fdr_mask,bh_mask\n0,0.5,0\n",
+    ",mean_subj_acc,fdr_mask,bh_mask\n0,0.5,0,1,1\n",
+    ",mean_subj_acc,fdr_mask,bh_mask\n0,1e100,0,1\n",
+])
+def test_reject_invalid_replacement_schema_and_width(tmp_path, content):
+    from macman.data import read_map_masks
+
+    path = tmp_path / "bad.csv"
+    path.write_text(content)
+    with pytest.raises(ValueError):
+        read_map_masks(path, 1)
