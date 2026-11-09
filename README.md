@@ -83,9 +83,20 @@ uv run python scripts/sync_notebook_dependencies.py --check
 
 Source CSV preparation accepts named FDR/BH mask columns and optional TFCE.
 `read_map_masks` requires BH by default for replacement-data validation; the
-existing `read_map` interface also accepts legacy FDR-only files. Prepared
-assets and dashboard controls still use FDR. See the
+existing `read_map` interface also accepts legacy FDR-only files. Preparation
+generates unthresholded maps and every supplied supported mask variant;
+dashboard controls currently use FDR. See the
 [CSV reader contract](data/stat_maps/README.md#source-csv-reader) for details.
+
+To build a full replacement statistical collection in a fresh directory:
+
+```bash
+uv run python -m scripts.prepare_stat_maps --source /path/to/replacement-csvs --output notes/stat-rebuild
+```
+
+This copies and validates all sources, regenerates every applicable GIFTI, and
+checks saved values and masks before activation. See the
+[replacement build procedure](data/stat_maps/README.md#full-replacement-build).
 
 ## Further documentation
 

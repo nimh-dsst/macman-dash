@@ -290,8 +290,8 @@ async def _(
             await ensure_assets(
                 [
                     info["path"]
-                    for variant in selected_entry["assets"].values()
-                    for info in variant.values()
+                    for variant in ("unthresholded", "fdr")
+                    for info in selected_entry["assets"][variant].values()
                 ],
                 asset_base,
             )

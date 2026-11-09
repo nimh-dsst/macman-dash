@@ -97,7 +97,7 @@ def read_map(path, count=VERTICES, with_mask=False):
     return values
 
 
-def build_catalog(root=ROOT):
+def build_catalog(root=ROOT, *, count=VERTICES, require_bh=False):
     grouped = {}
     for path in sorted((root / "data/h2m/glasser2").glob("*.csv")):
         match = PATTERN.fullmatch(path.name)
@@ -108,6 +108,8 @@ def build_catalog(root=ROOT):
         entry = grouped.setdefault(
             key, {"label": label, "hemisphere": hemi, "source_id": number, "files": {}}
         )
+        if entry["source_id"] != number:
+            raise ValueError(f"Inconsistent source IDs for {key}")
         if side in entry["files"]:
             raise ValueError(f"Duplicate map for {key}/{side}")
         entry["files"][side] = str(path.relative_to(root))
@@ -122,19 +124,30 @@ def build_catalog(root=ROOT):
         entry["sha256"] = {}
         arrays = []
         masks = []
+        entry["assets"] = {}
+        entry["mask_counts"] = {}
         for side in ("lh", "rh"):
             relative = entry["files"][side]
             path = root / relative
-            values, mask = read_map(path, with_mask=True)
+            values, supplied_masks = read_map_masks(
+                path, count, require_bh=require_bh
+            )
             arrays.append(values)
-            masks.append(mask)
+            masks.append(supplied_masks["fdr_mask"])
+            for variant, info in write_hemisphere_stat_assets(
+                key, side, values, supplied_masks, root
+            ).items():
+                entry["assets"].setdefault(variant, {})[side] = info
+            for name, supplied_mask in supplied_masks.items():
+                entry["mask_counts"].setdefault(name.removesuffix("_mask"), {})[
+                    side
+                ] = int((supplied_mask & np.isfinite(values)).sum())
             low = min(low, float(np.nanmin(values)))
             high = max(high, float(np.nanmax(values)))
             entry["sha256"][side] = digest(path)
         entry["identical_hemispheres"] = bool(np.array_equal(*arrays, equal_nan=True))
         values = np.concatenate(arrays)
         mask = np.concatenate(masks)
-        entry["assets"] = write_stat_assets(key, values, mask, root)
         entry["hemisphere_counts"] = {
             side: {
                 "finite": int(np.isfinite(array).sum()),
@@ -155,7 +168,7 @@ def build_catalog(root=ROOT):
         "development": True,
         "statistic": "mean_subj_acc",
         "range": [-maximum if low < 0 else 0, maximum],
-        "vertex_count_per_hemisphere": VERTICES,
+        "vertex_count_per_hemisphere": count,
         "excluded_incomplete_pairs": excluded,
         "rois": rois,
     }
@@ -166,30 +179,43 @@ def build_catalog(root=ROOT):
     return catalog
 
 
-def write_stat_assets(key, values, mask, root=ROOT):
-    """Precompute each hemisphere separately; input order is left then right."""
+def write_hemisphere_stat_assets(key, side, values, masks, root=ROOT):
+    """Save original statistics and every supplied supported mask for one side."""
     folder = root / "data/stat_maps"
     folder.mkdir(parents=True, exist_ok=True)
+    if side not in ("lh", "rh") or np.ndim(values) != 1:
+        raise ValueError("Expected one hemisphere of scalar values")
+    variants = {"unthresholded": values}
+    for name, mask in masks.items():
+        if name not in ("fdr_mask", "bh_mask", "tfce_mask"):
+            raise ValueError(f"Unsupported mask: {name}")
+        if np.shape(mask) != np.shape(values) or not np.isin(mask, [0, 1]).all():
+            raise ValueError(f"{name}: expected one binary mask entry per vertex")
+        variants[name.removesuffix("_mask")] = np.where(mask, values, np.nan)
+    assets = {}
+    for variant, data in variants.items():
+        payload = scalar_bytes(data)
+        checksum = hashlib.sha256(payload).hexdigest()
+        path = folder / f"{key}.{side}.{variant}.{checksum[:12]}.shape.gii"
+        temporary = path.with_suffix(".gii.tmp")
+        temporary.write_bytes(payload)
+        temporary.replace(path)
+        assets[variant] = {"path": str(path.relative_to(root)), "sha256": checksum}
+    return assets
+
+
+def write_stat_assets(key, values, mask, root=ROOT):
+    """Legacy bilateral FDR helper; input order is left then right."""
     if len(values) % 2 or len(values) != len(mask):
         raise ValueError("Expected equally sized left/right values and masks")
     assets = {}
-    for variant, data in (
-        ("unthresholded", values),
-        ("fdr", np.where(mask, values, np.nan)),
+    for side, array, hemi_mask in zip(
+        ("lh", "rh"), np.split(values, 2), np.split(mask, 2)
     ):
-        assets[variant] = {}
-        for side, hemisphere_data in zip(("lh", "rh"), np.split(data, 2)):
-            payload = scalar_bytes(hemisphere_data)
-            checksum = hashlib.sha256(payload).hexdigest()
-            path = folder / f"{key}.{side}.{variant}.{checksum[:12]}.shape.gii"
-            if not path.exists() or digest(path) != checksum:
-                temporary = path.with_suffix(".gii.tmp")
-                temporary.write_bytes(payload)
-                temporary.replace(path)
-            assets[variant][side] = {
-                "path": str(path.relative_to(root)),
-                "sha256": checksum,
-            }
+        for variant, info in write_hemisphere_stat_assets(
+            key, side, array, {"fdr_mask": hemi_mask}, root
+        ).items():
+            assets.setdefault(variant, {})[side] = info
     return assets
 
 

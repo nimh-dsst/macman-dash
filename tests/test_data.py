@@ -25,11 +25,7 @@ def test_catalog_excludes_b_fef_from_assets_and_range(tmp_path, monkeypatch):
     for key, value in (("L_FEF", 0.1), ("R_FEF", 0.2), ("B_FEF", 99)):
         for side in ("lh", "rh"):
             write_csv(folder / f"roi-0010_{key}_NHP-{side}.csv", [f"0,{value},1"])
-    monkeypatch.setattr(
-        "macman.data.read_map",
-        lambda path, with_mask=False: read_map(path, count=1, with_mask=with_mask),
-    )
-    catalog = build_catalog(tmp_path)
+    catalog = build_catalog(tmp_path, count=1)
     assert set(catalog["rois"]) == {"L_FEF", "R_FEF"}
     assert catalog["range"] == pytest.approx([0, 0.2])
     assert catalog["excluded_incomplete_pairs"] == []
@@ -54,11 +50,7 @@ def test_catalog_ignores_suffix_maps_but_accepts_correct_v3_names(
     ):
         for side in sides:
             write_csv(folder / f"roi-0005_{key}_NHP-{side}.csv", [f"0,{value},1"])
-    monkeypatch.setattr(
-        "macman.data.read_map",
-        lambda path, with_mask=False: read_map(path, count=1, with_mask=with_mask),
-    )
-    catalog = build_catalog(tmp_path)
+    catalog = build_catalog(tmp_path, count=1)
     assert set(catalog["rois"]) == {"L_V3", "R_V3"}
     assert catalog["range"] == pytest.approx([0, 0.2])
     assert catalog["excluded_incomplete_pairs"] == []
