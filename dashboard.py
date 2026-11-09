@@ -81,9 +81,14 @@ def _(ROOT, json, mo):
     )
     catalog = json.loads((ROOT / "data/catalog.json").read_text())
     mo.stop(
-        catalog.get("schema_version") != 3,
+        catalog.get("schema_version") != 3
+        or any(
+            set(entry.get("assets", {}).get("bh", {})) != {"lh", "rh"}
+            or set(entry.get("mask_counts", {}).get("bh", {})) != {"lh", "rh"}
+            for entry in catalog.get("rois", {}).values()
+        ),
         mo.callout(
-            "Precomputed maps required. Run `uv run python -m macman.data`, then restart.",
+            "Prepared BH maps and counts are required. Rebuild the catalog from CSVs containing bh_mask, then restart.",
             kind="warn",
         ),
     )
@@ -101,8 +106,8 @@ def _(DEFAULT_PALETTE_LABEL, PALETTES, mo):
         label="Colormap",
         full_width=True,
     )
-    apply_fdr = mo.ui.switch(value=False, label="Apply supplied FDR mask")
-    only_fdr = mo.ui.checkbox(value=False, label="Only ROIs with FDR results")
+    apply_bh = mo.ui.switch(value=False, label="Apply supplied BH mask")
+    only_bh = mo.ui.checkbox(value=False, label="Only ROIs with BH results")
     camera = mo.ui.dropdown(
         ["Lateral", "Medial", "Dorsal", "Ventral"],
         value="Lateral",
@@ -128,14 +133,14 @@ def _(DEFAULT_PALETTE_LABEL, PALETTES, mo):
         full_width=True,
     )
     return (
-        apply_fdr,
+        apply_bh,
         atlas_context_opacity,
         camera,
         hemisphere,
         human_camera,
         human_reset,
         palette,
-        only_fdr,
+        only_bh,
         reset,
     )
 
@@ -149,18 +154,18 @@ def _(mo, DEFAULT_MAP_OPACITY):
 
 @app.cell
 def _(
-    apply_fdr, get_map_opacity, get_mask_context, mo, set_map_opacity, set_mask_context
+    apply_bh, get_map_opacity, get_mask_context, mo, set_map_opacity, set_mask_context
 ):
     opacity = mo.ui.slider(
         0,
         1,
         step=0.05,
-        value=get_mask_context() if apply_fdr.value else get_map_opacity(),
-        label="Outside-mask opacity" if apply_fdr.value else "Map opacity",
+        value=get_mask_context() if apply_bh.value else get_map_opacity(),
+        label="Outside-mask opacity" if apply_bh.value else "Map opacity",
         show_value=True,
         debounce=True,
         full_width=True,
-        on_change=set_mask_context if apply_fdr.value else set_map_opacity,
+        on_change=set_mask_context if apply_bh.value else set_map_opacity,
     )
     return (opacity,)
 
@@ -201,8 +206,8 @@ def _(mo, set_region):
 
 
 @app.cell
-def _(catalog, get_region, hemisphere, mo, only_fdr, region_options, set_region):
-    _options = region_options(catalog["rois"], hemisphere.value, only_fdr.value)
+def _(catalog, get_region, hemisphere, mo, only_bh, region_options, set_region):
+    _options = region_options(catalog["rois"], hemisphere.value, only_bh.value)
     requested_region = get_region()
     _initial = next(
         (label for label, value in _options.items() if value == requested_region), None
@@ -290,12 +295,12 @@ async def _(
             await ensure_assets(
                 [
                     info["path"]
-                    for variant in ("unthresholded", "fdr")
+                    for variant in ("unthresholded", "bh")
                     for info in selected_entry["assets"][variant].values()
                 ],
                 asset_base,
             )
-            stat_assets = load_stat_assets(selected_entry)
+            stat_assets = load_stat_assets(selected_entry, mask_variant="bh")
         except (ValueError, OSError) as exc:
             map_error = str(exc)
     return map_error, selected_entry, selected_roi, stat_assets
@@ -303,7 +308,7 @@ async def _(
 
 @app.cell
 def _(catalog, display_range, range_mode, selected_entry, stat_assets):
-    # Metadata uses the original unmasked values, regardless of FDR setting.
+    # Metadata uses the original unmasked values, regardless of BH setting.
     _range = selected_entry["value_range"] if stat_assets is not None else None
     color_limits = display_range(range_mode.value, catalog["range"], _range)
     return (color_limits,)
@@ -312,7 +317,7 @@ def _(catalog, display_range, range_mode, selected_entry, stat_assets):
 @app.cell
 def _(selected_entry, stat_assets):
     passing_vertices = (
-        selected_entry["passing_vertices"] if stat_assets is not None else 0
+        sum(selected_entry["mask_counts"]["bh"].values()) if stat_assets is not None else 0
     )
     displayed_data = None
     if stat_assets is not None:
@@ -322,7 +327,7 @@ def _(selected_entry, stat_assets):
 
 @app.cell
 def _(
-    apply_fdr,
+    apply_bh,
     catalog,
     color_limits,
     displayed_data,
@@ -352,9 +357,9 @@ def _(
                 minimum=color_limits[0],
                 curvature_data=curvature_data[_side],
                 mask_data=(
-                    stat_assets["fdr"][_side]
-                    if apply_fdr.value
-                    and selected_entry["hemisphere_counts"][_side]["passing"]
+                    stat_assets["bh"][_side]
+                    if apply_bh.value
+                    and selected_entry["mask_counts"]["bh"][_side]
                     else None
                 ),
             )
@@ -371,7 +376,7 @@ def _(
 
 @app.cell
 def _(
-    apply_fdr,
+    apply_bh,
     passing_vertices,
     atlas_context_opacity,
     atlas_note,
@@ -386,7 +391,7 @@ def _(
     map_error,
     mo,
     opacity,
-    only_fdr,
+    only_bh,
     palette,
     reset,
     reset_selection,
@@ -421,12 +426,12 @@ def _(
         )
     elif stat_assets is not None:
         _status = mo.md(f"**{selected_roi}**")
-        if apply_fdr.value and passing_vertices:
+        if apply_bh.value and passing_vertices:
             _status = mo.vstack(
                 [
                     _status,
                     mo.md(
-                        f"{passing_vertices:,} finite vertices pass the supplied FDR mask."
+                        f"{passing_vertices:,} finite vertices pass the supplied BH mask."
                     ),
                 ]
             )
@@ -441,11 +446,11 @@ def _(
             )
     elif requested_region is not None:
         _requested_key = f"{hemisphere.value[0]}_{requested_region}"
-        _filtered_out = only_fdr.value and _requested_key in catalog["rois"]
+        _filtered_out = only_bh.value and _requested_key in catalog["rois"]
         _status = mo.callout(
             (
-                f"{requested_region} has no FDR results for the {hemisphere.value.lower()} human hemisphere. "
-                "Choose another ROI or turn off the FDR-results filter. No statistical map is displayed."
+                f"{requested_region} has no BH results for the {hemisphere.value.lower()} human hemisphere. "
+                "Choose another ROI or turn off the BH-results filter. No statistical map is displayed."
                 if _filtered_out
                 else f"{requested_region} is unavailable for the {hemisphere.value.lower()} human hemisphere. "
                 "Choose another ROI or switch hemispheres. No statistical map is displayed."
@@ -485,7 +490,7 @@ def _(
                     mo.hstack(
                         [roi, reset_selection], widths=[3, 2], align="end", gap=0.5
                     ),
-                    only_fdr,
+                    only_bh,
                 ],
                 gap=0.5,
             ).style(_control_style),
@@ -501,7 +506,7 @@ def _(
                         gap=0.25,
                     ),
                     palette,
-                    mo.vstack([opacity, apply_fdr], gap=0.5),
+                    mo.vstack([opacity, apply_bh], gap=0.5),
                 ],
                 widths=[1, 1, 1],
                 align="start",
@@ -533,10 +538,10 @@ def _(
         ]
         if (
             stat_assets is not None
-            and selected_entry["hemisphere_counts"][_side]["passing"] == 0
+            and selected_entry["mask_counts"]["bh"][_side] == 0
         ):
             _title_parts.append(
-                mo.Html("<div>No vertices pass the supplied FDR mask.</div>").style(
+                mo.Html("<div>No vertices pass the supplied BH mask.</div>").style(
                     {"font-size": "0.8rem", "color": "#9c4200"}
                 )
             )

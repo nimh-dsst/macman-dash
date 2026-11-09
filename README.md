@@ -21,9 +21,10 @@ uv run marimo edit dashboard.py
 
 - Select a hemisphere and ROI to display its maps in both NHP panels.
   The selected atlas parcel is outlined in black.
-- **Only ROIs with FDR results** filters the ROI list; **Apply supplied FDR mask**
+- **Only ROIs with BH results** filters the ROI list; **Apply supplied BH mask**
   independently controls the masked display. Outside-mask colors can remain
-  visible at reduced opacity.
+  visible at reduced opacity. Both controls start off; BH is the sole displayed
+  masking method, using the supplied `bh_mask` without recomputation.
 - Only ROIs with both NHP hemisphere files are selectable.
 - Maps use **viridis** colors at **0.7 opacity**, allowing the grayscale
   anatomical folding background to show through.
@@ -85,7 +86,7 @@ Source CSV preparation accepts named FDR/BH mask columns and optional TFCE.
 `read_map_masks` requires BH by default for replacement-data validation; the
 existing `read_map` interface also accepts legacy FDR-only files. Preparation
 generates unthresholded maps and every supplied supported mask variant;
-dashboard controls currently use FDR. See the
+dashboard controls use BH. See the
 [CSV reader contract](data/stat_maps/README.md#source-csv-reader) for details.
 
 To build a full replacement statistical collection in a fresh directory:
@@ -97,6 +98,17 @@ uv run python -m scripts.prepare_stat_maps --source /path/to/replacement-csvs --
 This copies and validates all sources, regenerates every applicable GIFTI, and
 checks saved values and masks before activation. See the
 [replacement build procedure](data/stat_maps/README.md#full-replacement-build).
+
+To check a fresh standard WASM export in Chrome at both hosting paths:
+
+```bash
+.venv/bin/python tests/standard_wasm.py --site site
+.venv/bin/python tests/standard_wasm.py --site site --prefix /macman-dash
+```
+
+These checks serve static files locally, download browser runtime dependencies,
+and exercise BH controls, rendering, filtering, and on-demand asset reuse.
+Reports/screenshots are saved under `notes/bh-wasm-validation/` by default.
 
 ## Further documentation
 

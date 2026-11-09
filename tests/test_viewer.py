@@ -1,6 +1,6 @@
 from macman.data import CurvatureAsset
 from macman.layers import ResultMesh
-from macman.viewer import FDR_MAP_OPACITY, replace_map
+from macman.viewer import MASK_MAP_OPACITY, replace_map
 
 
 def test_context_opacity_preserves_passing_layer_and_border():
@@ -11,12 +11,12 @@ def test_context_opacity_preserves_passing_layer_and_border():
     base = mesh.layers[0]
     overlay = mesh.layers[1]
     assert base.opacity == 0.25
-    assert overlay.opacity == FDR_MAP_OPACITY
+    assert overlay.opacity == MASK_MAP_OPACITY
     assert overlay.outline_border == -0.01
     assert not base.colorbar_visible and overlay.colorbar_visible
     replace_map(mesh, b"base", 0.1, "turbo", 0, minimum=0.01, mask_data=b"mask")
     base, overlay = mesh.layers
-    assert base.opacity == 0 and overlay.opacity == FDR_MAP_OPACITY
+    assert base.opacity == 0 and overlay.opacity == MASK_MAP_OPACITY
     assert all(layer.cal_min == 0.01 and layer.cal_max == 0.1 for layer in mesh.layers)
     replace_map(mesh, b"base", 0.1, "turbo", 1)
     assert len(mesh.layers) == 1

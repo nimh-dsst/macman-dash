@@ -160,10 +160,10 @@ def main():
         report["checks"].append(
             "L_FST files loaded; bilateral overlays and local range"
         )
-        toggle = page.get_by_text("Apply supplied FDR mask", exact=True)
+        toggle = page.get_by_text("Apply supplied BH mask", exact=True)
         toggle.click()
         expect(
-            page.get_by_text("22,253 finite vertices pass", exact=False)
+            page.get_by_text("43,029 finite vertices pass", exact=False)
         ).to_be_visible(timeout=15000)
         page.wait_for_timeout(1800)
         masked = surfaces()
@@ -179,7 +179,7 @@ def main():
                 page.wait_for_timeout(1800)
         page.wait_for_timeout(1800)
         expect_canvas_images(page, masked, indices=(1, 2))
-        report["checks"].append("FDR border/context and opacity 0/0.25")
+        report["checks"].append("BH border/context and opacity 0/0.25")
         toggle.click()
         page.wait_for_timeout(1800)
         assert surfaces() == original
@@ -210,16 +210,16 @@ def main():
         toggle.click()
         select("FST", "46")
         expect(
-            page.get_by_text("No vertices pass the supplied FDR mask.", exact=True)
+            page.get_by_text("No vertices pass the supplied BH mask.", exact=True)
         ).to_have_count(2)
-        select("46", "FEF")
+        select("46", "55b")
         expect(
-            page.get_by_text("No vertices pass the supplied FDR mask.", exact=True)
+            page.get_by_text("No vertices pass the supplied BH mask.", exact=True)
         ).to_have_count(1)
         report["checks"].append("Empty masks on both sides and one side")
         page.screenshot(path=str(REPORTS / "wasm-dashboard.png"), full_page=True)
         page.get_by_label("Right", exact=True).check()
-        expect(page.get_by_text("R_FEF", exact=True)).to_be_visible(timeout=30000)
+        expect(page.get_by_text("R_55b", exact=True)).to_be_visible(timeout=30000)
         page.wait_for_timeout(1800)
         assert page.locator("canvas").nth(0).screenshot() != human
         expect(page.locator("select").nth(0).locator("option:checked")).to_have_text(
@@ -230,7 +230,7 @@ def main():
         )
         expect(page.get_by_text("Outside-mask opacity", exact=True)).to_be_visible()
         report["checks"].append(
-            "Human hemisphere switch; range/FDR/context settings retained"
+            "Human hemisphere switch; range/BH/context settings retained"
         )
         page.get_by_role("button", name="Reset selection", exact=True).click()
         expect(page.get_by_text("Select...", exact=True)).to_be_visible()

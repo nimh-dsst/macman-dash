@@ -11,7 +11,7 @@ from .data import load_curvature_assets, scene_assets
 from .layers import ResultMesh
 
 DEFAULT_MAP_OPACITY = 0.7
-FDR_MAP_OPACITY = 0.8
+MASK_MAP_OPACITY = 0.8
 
 
 def layer_bytes(data, name, **kwargs):
@@ -96,7 +96,7 @@ def replace_map(
     """Publish configured layers; retain old widgets until frontend acknowledgment."""
     desired = [(data, opacity, 0)] if data is not None else []
     if mask_data is not None:
-        desired.append((mask_data, FDR_MAP_OPACITY, -0.01))
+        desired.append((mask_data, MASK_MAP_OPACITY, -0.01))
     layers = [curvature_layer(curvature_data)] if curvature_data is not None else []
     for index, (payload, layer_opacity, border) in enumerate(desired):
         layer = layer_bytes(

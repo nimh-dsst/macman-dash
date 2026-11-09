@@ -158,3 +158,44 @@ def test_csv_values_reach_overlay_widgets_unchanged_across_display_updates(
             assert [layer.data for layer in mesh.layers] == [background.data]
         finally:
             mesh.close()
+
+
+def test_bh_assets_reach_viewer_without_reading_fdr_or_reencoding(tmp_path, monkeypatch):
+    from macman.data import read_map_masks, write_hemisphere_stat_assets
+
+    entry = {"assets": {}}
+    for side, rows in (
+        ("lh", "2,0.75,0,1\n0,0.125,0,1\n1,,0,0\n"),
+        ("rh", "1,0.5,1,0\n2,0.25,1,0\n0,0.875,1,0\n"),
+    ):
+        path = tmp_path / f"{side}.csv"
+        path.write_text(",mean_subj_acc,fdr_mask,bh_mask\n" + rows)
+        values, masks = read_map_masks(path, count=3)
+        for variant, info in write_hemisphere_stat_assets(
+            "L_test", side, values, masks, tmp_path
+        ).items():
+            entry["assets"].setdefault(variant, {})[side] = info
+        # FDR data must never be read when BH is requested.
+        (tmp_path / entry["assets"]["fdr"][side]["path"]).unlink()
+    forbid_gifti_encoding(monkeypatch)
+    assets = load_stat_assets(entry, root=tmp_path, mask_variant="bh")
+    assert set(assets) == {"unthresholded", "bh"}
+    expected = {"lh": [0.125, np.nan, 0.75], "rh": [np.nan, np.nan, np.nan]}
+    for side in ("lh", "rh"):
+        np.testing.assert_array_equal(
+            nib.gifti.GiftiImage.from_bytes(assets["bh"][side]).agg_data(), expected[side]
+        )
+        mesh = ResultMesh(data=b"unused geometry", name="mesh.gii")
+        try:
+            for opacity, palette in ((0.25, "viridis"), (0, "turbo"), (1, "magma")):
+                replace_map(mesh, assets["unthresholded"][side], 1, palette, opacity,
+                            mask_data=assets["bh"][side] if side == "lh" else None)
+                payloads = [layer.get_state("data")["data"] for layer in mesh.layers]
+                assert payloads == [assets["unthresholded"][side]] + (
+                    [assets["bh"][side]] if side == "lh" else []
+                )
+        finally:
+            mesh.close()
+    del entry["assets"]["bh"]
+    with pytest.raises(ValueError, match="Prepared bh maps required"):
+        load_stat_assets(entry, root=tmp_path, mask_variant="bh")

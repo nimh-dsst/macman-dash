@@ -55,8 +55,8 @@ from an available mask with no passing vertices. TFCE without BH is rejected.
 with just IDs, statistics, and FDR. The existing `read_map` interface uses this
 compatibility mode: it returns statistics, or `(values, fdr_mask)` when
 `with_mask=True`. Catalog preparation generates unthresholded maps and every supported supplied
-mask variant. The dashboard currently loads/displays only unthresholded and FDR
-maps; BH/TFCE display controls remain future work.
+mask variant. The dashboard loads/displays only unthresholded and BH maps. There is no method selector; FDR/TFCE
+assets remain prepared but are not selected by the dashboard.
 
 All supplied masks must contain only 0 or 1, even when the caller requests only
 statistics. Duplicate/unknown/missing columns, wrong row widths/counts, invalid
@@ -98,3 +98,13 @@ This local activation is separate from publishing a deployment. The November 9
 replacement contains 702 source CSVs and 346 eligible complete pairs, producing
 692 unthresholded, 692 FDR, 692 BH and four TFCE GIFTIs. Shared source geometry
 and the convexity background were not regenerated.
+
+## Dashboard mask policy
+
+The dashboard uses `bh_mask` exclusively for masking, filtering, and passing
+counts. Its Apply supplied BH mask and Only ROIs with BH results controls start
+off. It fetches four files per ROI (unthresholded and BH for both hemispheres).
+BH counts come from `mask_counts.bh`; legacy FDR count fields retain their
+original meanings. A catalog missing bilateral BH assets/counts is rejected
+with an explicit preparation message, rather than substituting FDR. Statistics,
+geometry, display limits, and prepared files are unchanged by this UI switch.

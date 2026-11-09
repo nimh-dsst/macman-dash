@@ -9,7 +9,9 @@ def rois():
         key: {
             "hemisphere": key[0],
             "label": key[2:],
-            "hemisphere_counts": {"lh": {"passing": left}, "rh": {"passing": right}},
+            "mask_counts": {"bh": {"lh": left, "rh": right}},
+            # Deliberately opposite legacy FDR counts detect use of the wrong mask.
+            "hemisphere_counts": {"lh": {"passing": not left}, "rh": {"passing": not right}},
         }
         for key, left, right in [
             ("L_V1", 10, 20),
@@ -32,15 +34,15 @@ def test_options_are_prefixless_and_match_hemisphere(rois):
     }
 
 
-def test_fdr_filter_accepts_either_nhp_hemisphere_and_preserves_lookup(rois):
-    assert list(region_options(rois, "Left", only_fdr=True).values()) == ["V1", "V3"]
-    assert list(region_options(rois, "Right", only_fdr=True).values()) == ["25"]
-    for region in region_options(rois, "Left", only_fdr=True).values():
+def test_bh_filter_accepts_either_nhp_hemisphere_and_preserves_lookup(rois):
+    assert list(region_options(rois, "Left", only_bh=True).values()) == ["V1", "V3"]
+    assert list(region_options(rois, "Right", only_bh=True).values()) == ["25"]
+    for region in region_options(rois, "Left", only_bh=True).values():
         assert resolve_roi(rois, "Left", region) == f"L_{region}"
 
 
-def test_fdr_filter_can_return_an_empty_list(rois):
-    assert region_options({"R_V1": rois["R_V1"]}, "Right", only_fdr=True) == {}
+def test_bh_filter_can_return_an_empty_list(rois):
+    assert region_options({"R_V1": rois["R_V1"]}, "Right", only_bh=True) == {}
 
 
 def test_switch_resolves_same_region_to_other_map(rois):

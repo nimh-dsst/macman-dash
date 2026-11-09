@@ -85,7 +85,7 @@ def main():
                 neutral = images()
                 choose_roi(page, "Select...", "FST")
                 page.wait_for_timeout(2000)
-                toggle = page.get_by_text("Apply supplied FDR mask", exact=True)
+                toggle = page.get_by_text("Apply supplied BH mask", exact=True)
                 toggle.click()
                 page.wait_for_timeout(2000)
                 baseline = images()
@@ -102,7 +102,7 @@ def main():
                     expect(slider).to_have_attribute("aria-valuenow", "0.25")
                     expect_canvas_images(page, baseline, indices=(1, 2))
                 report["checks"].append(
-                    "Ten rapid 0-to-0.25 bursts restore both exact FDR images"
+                    "Ten rapid 0-to-0.25 bursts restore both exact BH images"
                 )
                 slider.scroll_into_view_if_needed()
                 for fraction in (1, 0, 1, 0):
@@ -148,7 +148,7 @@ def main():
                 choose_roi(page, "FST", "V1")
                 expect_canvas_images(page, v1, indices=(1, 2))
                 report["checks"].append(
-                    "ROI/FDR/palette bursts preserve correct FST and V1 images afterward"
+                    "ROI/BH/palette bursts preserve correct FST and V1 images afterward"
                 )
                 page.get_by_role("button", name="Reset selection", exact=True).click()
                 expect_canvas_images(page, neutral, indices=(1, 2))

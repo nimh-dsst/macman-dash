@@ -219,12 +219,16 @@ def write_stat_assets(key, values, mask, root=ROOT):
     return assets
 
 
-def load_stat_assets(entry, root=ROOT):
+def load_stat_assets(entry, root=ROOT, *, mask_variant="fdr"):
     """Load prepared bytes without reading CSVs or generating GIFTIs."""
     if "assets" not in entry:
         raise ValueError("Precomputed maps missing; run python -m macman.data")
+    if mask_variant not in ("fdr", "bh", "tfce"):
+        raise ValueError(f"Unsupported mask variant: {mask_variant}")
+    if set(entry["assets"].get(mask_variant, {})) != {"lh", "rh"}:
+        raise ValueError(f"Prepared {mask_variant} maps required for both hemispheres")
     assets = {}
-    for variant in ("unthresholded", "fdr"):
+    for variant in ("unthresholded", mask_variant):
         assets[variant] = {}
         for side in ("lh", "rh"):
             info = entry["assets"][variant][side]

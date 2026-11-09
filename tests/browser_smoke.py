@@ -61,13 +61,13 @@ if __name__ == "__main__":
             )
             browser.close()
             raise SystemExit(0)
-        if "--fdr-discovery-only" in sys.argv:
+        if "--bh-discovery-only" in sys.argv:
             page.set_viewport_size({"width": 1366, "height": 768})
-            filter_control = page.get_by_label("Only ROIs with FDR results", exact=True)
+            filter_control = page.get_by_label("Only ROIs with BH results", exact=True)
             expect(filter_control).not_to_be_checked()
-            toggle = page.get_by_text("Apply supplied FDR mask", exact=True)
+            toggle = page.get_by_text("Apply supplied BH mask", exact=True)
             empty_status = page.get_by_text(
-                "No vertices pass the supplied FDR mask.", exact=True
+                "No vertices pass the supplied BH mask.", exact=True
             )
 
             def pick(current, target):
@@ -86,7 +86,7 @@ if __name__ == "__main__":
             filter_control.check()
             expect(page.get_by_text("Select...", exact=True)).to_be_visible()
             expect(
-                page.get_by_text("46 has no FDR results", exact=False)
+                page.get_by_text("46 has no BH results", exact=False)
             ).to_be_visible()
             page.get_by_text("Select...", exact=True).click()
             page.get_by_placeholder("Search...").fill("46")
@@ -94,28 +94,28 @@ if __name__ == "__main__":
             page.keyboard.press("Escape")
             filter_control.uncheck()
             expect(page.get_by_text("L_46", exact=True)).to_be_visible()
-            pick("46", "FEF")
-            expect(page.get_by_text("FEF", exact=True)).to_be_visible()
+            pick("46", "55b")
+            expect(page.get_by_text("55b", exact=True)).to_be_visible()
             expect(empty_status).to_have_count(1)
             filter_control.check()
-            expect(page.get_by_text("L_FEF", exact=True)).to_be_visible()
+            expect(page.get_by_text("L_55b", exact=True)).to_be_visible()
             toggle.click()
             expect(page.get_by_text("Outside-mask opacity", exact=True)).to_be_visible()
             page.get_by_role("slider").first.press("Home")
-            pick("FEF", "FST")
+            pick("55b", "FST")
             expect(empty_status).to_have_count(0)
             expect(page.get_by_role("slider").first).to_have_attribute(
                 "aria-valuenow", "0"
             )
             expect(page.get_by_text("Outside-mask opacity", exact=True)).to_be_visible()
-            pick("FST", "PGs")
+            pick("FST", "55b")
             page.get_by_label("Right", exact=True).check()
             expect(
-                page.get_by_text("PGs has no FDR results", exact=False)
+                page.get_by_text("55b has no BH results", exact=False)
             ).to_be_visible()
             expect(page.get_by_text("Select...", exact=True)).to_be_visible()
             filter_control.uncheck()
-            expect(page.get_by_text("R_PGs", exact=True)).to_be_visible()
+            expect(page.get_by_text("R_55b", exact=True)).to_be_visible()
             expect(empty_status).to_have_count(2)
             expect(page.get_by_text("Outside-mask opacity", exact=True)).to_be_visible()
             expect(page.get_by_role("slider").first).to_have_attribute(
@@ -123,9 +123,9 @@ if __name__ == "__main__":
             )
             filter_control.check()
             page.get_by_text("Select...", exact=True).click()
-            page.get_by_placeholder("Search...").fill("ProS")
-            page.get_by_role("option", name="ProS", exact=True).click()
-            expect(page.get_by_text("R_ProS", exact=True)).to_be_visible()
+            page.get_by_placeholder("Search...").fill("PGs")
+            page.get_by_role("option", name="PGs", exact=True).click()
+            expect(page.get_by_text("R_PGs", exact=True)).to_be_visible()
             expect(empty_status).to_have_count(1)
             page.get_by_role("button", name="Reset selection", exact=True).click()
             expect(page.get_by_text("Select...", exact=True)).to_be_visible()
@@ -136,7 +136,7 @@ if __name__ == "__main__":
             expect(page.locator("canvas")).to_have_count(3)
             assert not errors, errors
             print(
-                "FDR discovery passed: labels, either-side filter, pre-toggle empty status, filtered selection restoration, hemisphere changes, persistent FDR/opacity, and reset."
+                "BH discovery passed: labels, either-side filter, pre-toggle empty status, filtered selection restoration, hemisphere changes, persistent BH/opacity, and reset."
             )
             browser.close()
             raise SystemExit(0)
@@ -228,14 +228,14 @@ if __name__ == "__main__":
             original = snapshots()
             assert all(original[i] != medial[i] for i in (1, 2))
             expect(page.get_by_text("0.0025 to 0.1010", exact=False)).to_be_visible()
-            toggle = page.get_by_text("Apply supplied FDR mask", exact=True)
+            toggle = page.get_by_text("Apply supplied BH mask", exact=True)
             toggle.click()
             page.wait_for_timeout(1500)
             masked = snapshots()
             assert masked[0] == original[0]
             assert all(masked[i] != original[i] for i in (1, 2))
             expect(
-                page.get_by_text("22,253 finite vertices pass", exact=False)
+                page.get_by_text("43,029 finite vertices pass", exact=False)
             ).to_be_visible()
             expect(page.get_by_text("0.0025 to 0.1010", exact=False)).to_be_visible()
             expect(page.get_by_text("Outside-mask opacity", exact=True)).to_be_visible()
@@ -276,7 +276,7 @@ if __name__ == "__main__":
             empty = snapshots()
             assert all(empty[i] != medial[i] for i in (1, 2))
             expect(
-                page.get_by_text("No vertices pass the supplied FDR mask.", exact=True)
+                page.get_by_text("No vertices pass the supplied BH mask.", exact=True)
             ).to_have_count(2)
             page.get_by_role("button", name="Reset selection", exact=True).click()
             page.wait_for_timeout(1500)
@@ -287,7 +287,7 @@ if __name__ == "__main__":
                 console_errors
             )
             print(
-                "Split views passed: both overlays, medial/lateral presets, independent rotation/zoom, human/NHP camera reset, shared ranges/palette/FDR, ROI changes and selection reset."
+                "Split views passed: both overlays, medial/lateral presets, independent rotation/zoom, human/NHP camera reset, shared ranges/palette/BH, ROI changes and selection reset."
             )
             browser.close()
             raise SystemExit(0)
@@ -299,22 +299,22 @@ if __name__ == "__main__":
             expect(page.get_by_text("L_FST", exact=True)).to_be_visible()
             expect(page.get_by_text("0.0025 to 0.1010", exact=False)).to_be_visible()
             original = page.locator("canvas").nth(1).screenshot()
-            page.get_by_text("Apply supplied FDR mask", exact=True).click()
+            page.get_by_text("Apply supplied BH mask", exact=True).click()
             page.wait_for_timeout(2000)
             expect(
                 page.get_by_text(
-                    "22,253 finite vertices pass the supplied FDR mask.", exact=True
+                    "43,029 finite vertices pass the supplied BH mask.", exact=True
                 )
             ).to_be_visible()
             expect(page.get_by_text("0.0025 to 0.1010", exact=False)).to_be_visible()
             assert page.locator("canvas").nth(1).screenshot() != original
             page.screenshot(path="/tmp/macman-fst-validation.png", full_page=True)
-            page.get_by_text("Apply supplied FDR mask", exact=True).click()
+            page.get_by_text("Apply supplied BH mask", exact=True).click()
             page.wait_for_timeout(2000)
             assert page.locator("canvas").nth(1).screenshot() == original
             assert not errors, errors
             print(
-                "L_FST browser validation passed: 22,253 retained vertices, unchanged limits, reversible masking."
+                "L_FST browser validation passed: 43,029 retained vertices, unchanged limits, reversible masking."
             )
             browser.close()
             raise SystemExit(0)
@@ -341,19 +341,19 @@ if __name__ == "__main__":
         assert page.get_by_text("348 available bilateral maps", exact=True).count() == 0
         page.locator("select").nth(0).select_option(label="Across all ROIs")
         page.wait_for_timeout(1500)
-        if "--fdr-only" in sys.argv:
+        if "--bh-only" in sys.argv:
             unmasked = page.locator("canvas").nth(1).screenshot()
-            toggle = page.get_by_text("Apply supplied FDR mask", exact=True)
+            toggle = page.get_by_text("Apply supplied BH mask", exact=True)
             toggle.click()
             page.wait_for_timeout(2000)
             expect(
                 page.get_by_text(
-                    "finite vertices pass the supplied FDR mask.", exact=False
+                    "finite vertices pass the supplied BH mask.", exact=False
                 )
             ).to_be_visible()
             expect(page.get_by_text("0.0000 to 0.1647", exact=False)).to_be_visible()
             assert page.locator("canvas").nth(1).screenshot() != unmasked
-            page.screenshot(path="/tmp/macman-fdr.png", full_page=True)
+            page.screenshot(path="/tmp/macman-bh.png", full_page=True)
             toggle.click()
             page.wait_for_timeout(2000)
             assert page.locator("canvas").nth(1).screenshot() == unmasked
@@ -363,7 +363,7 @@ if __name__ == "__main__":
             page.get_by_text(roi_pattern("46")).click()
             page.wait_for_timeout(3000)
             expect(
-                page.get_by_text("No vertices pass the supplied FDR mask.", exact=True)
+                page.get_by_text("No vertices pass the supplied BH mask.", exact=True)
             ).to_have_count(2)
             empty_context = page.locator("canvas").nth(1).screenshot()
             assert empty_context != neutral
@@ -372,7 +372,7 @@ if __name__ == "__main__":
             assert page.locator("canvas").nth(1).screenshot() != neutral
             assert not errors, errors
             print(
-                "FDR toggle masks V1, preserves limits, restores values, and retains faint context for all-zero-mask ROI 46."
+                "BH toggle masks V1, preserves limits, restores values, and retains faint context for all-zero-mask ROI 46."
             )
             browser.close()
             raise SystemExit(0)
@@ -543,7 +543,7 @@ if __name__ == "__main__":
             page.get_by_role("option", name=roi_pattern("FEF (bilateral)")).count() == 0
         )
         page.get_by_role("option", name=roi_pattern("FEF")).click()
-        expect(page.get_by_text("L_FEF", exact=True)).to_be_visible(timeout=15000)
+        expect(page.get_by_text("L_55b", exact=True)).to_be_visible(timeout=15000)
         page.get_by_label("Right", exact=True).check()
         expect(page.get_by_text("R_FEF", exact=True)).to_be_visible(timeout=15000)
         page.get_by_label("Left", exact=True).check()
